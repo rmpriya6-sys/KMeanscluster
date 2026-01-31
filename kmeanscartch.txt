@@ -1,0 +1,135 @@
+#=================================================
+# Implementation of KMeans Clustering from scratch
+#=================================================
+
+import numpy as np 
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+#------------------------
+#1.Generate synthetic Data
+#------------------------
+
+X,y=make_blobs(n_samples=500, centers=4, cluster_std=1.0, random_state=42)
+
+#Visualize raw data
+plt.figure()
+plt.scatter(X[:,0],X[:,1])
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.show()
+
+#----------------------------
+# 2.Data Preprocessing(scaling)
+#-----------------------------
+
+scaler= StandardScaler()
+X_scaled= scaler.fit_transform(X)
+
+plt.scatter(X_scaled[:,0],X_scaled[:,1])
+plt.title("Synthetic Data(After Scaling)")
+plt.show()
+
+#-------------------------------------------------
+# 3.K-Means from scratch(numpy implementation)
+#-------------------------------------------------
+class KMeansScratch:
+    def __init__(self, k=4, max_iters=100, tol=1e-4):
+        self.k = k
+        self.max_iters = max_iters
+        self.tol=tol
+        
+
+    def initialize_centroids(self,X):
+        np.random.seed(42)
+        random_idx = np.random.permutation(X.shape[0])
+        return X[random_idx[:self.k]]
+        
+
+    def compute_distance(self,X,centroids):
+        return np.linalg.norm(X[:,np.newaxis] - centroids, axis=2)
+
+    def fit(self,X):
+        #Step1: initizalize centroids
+        self.centroids = self.initialize_centroids(X)
+
+        for _ in range(self.max_iters):
+
+            # step2.Assign clusters
+            distances = self.compute_distance(X,self.centroids)
+            self.labels = np.argmin(distances, axis=1)
+
+            # step3: Recalculate centroids 
+            new_centroids = np.array([X[self.labels ==i].mean(axis=0)
+            for i in range(self.k)])
+
+            # step 4:Convergence check
+            if np.linalg.norm(self.centroids -new_centroids)<self.tol:
+                break
+
+            self.centroids = new_centroids
+        return self.centroids, self.labels
+
+    def inertia(self, X):
+        distance= self.compute_distance(X,self.centroids)
+        min_dist=np.min(distance, axis=1)
+        return np.sum(min_dist ** 2)
+
+#------------------
+# 4. Elbow Method
+#------------------
+wcss = []
+k_range = range(1,11)
+
+for k in k_range:
+    model = KMeansScratch(k=k)
+    model.fit(X_scaled)
+    wcss.append(model.inertia(X_scaled))
+
+plt.figure()
+plt.plot(k_range,wcss, marker='o')
+plt.xlabel(" Number of cluster(K)")
+plt.ylabel("WCSS")
+plt.title("Elbow method")
+plt.savefig("elbow_method.png")
+plt.close()
+
+#Optimal K found Visually=4
+
+#--------------------------------
+# 5. Run Scratch K-Means optimal K=4
+#--------------------------------
+
+best_k=4
+model=KMeansScratch(k=best_k)
+centroids, labels = model.fit(X_scaled)
+
+plt.figure()
+plt.scatter(X_scaled[:,0],X_scaled[:,1], c=labels, cmap='viridis')
+plt.scatter(centroids[:,0],centroids[:,1], color='red', s=200, marker='X')
+plt.title("Scratch KMeans Clustering (Scaled Data)")
+plt.xlabel("Scaled Feature 1")
+plt.ylabel("Scaled Feature 2")
+plt.show()
+
+# -------------------------------
+# 6. Compare with sklearn KMeans
+# ------------------------------
+
+kmeans =KMeans(n_clusters=4, random_state=42)
+sk_labels=kmeans.fit_predict(X_scaled)
+sk_centroids=kmeans.cluster_centers_
+
+plt.figure()
+plt.scatter(X_scaled[:,0],X_scaled[:,1], c=sk_labels, cmap='plasma')
+plt.scatter(sk_centroids[:,0],sk_centroids[:,1], color='black', s=200, marker='X')
+plt.title("k_means(sklearn)")
+plt.xlabel("Scaled Feature 1")
+plt.ylabel("Scaled Feature 2")
+plt.show()
+
+#-----------------------
+#End of Assingnment code
+#-----------------------
